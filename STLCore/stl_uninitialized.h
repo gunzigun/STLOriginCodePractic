@@ -40,7 +40,7 @@ inline ForwardIterator
 __uninitialized_copy_aux(InputIterator first, InputIterator last,
                          ForwardIterator result,
                          __true_type) {
-  return copy(first, last, result);
+  return copy(first, last, result);   // 调用STL算法copy(),里面直接使用memove进行内存拷贝,定义在stl_algobase.h
 }
 
 template <class InputIterator, class ForwardIterator>
@@ -51,8 +51,8 @@ __uninitialized_copy_aux(InputIterator first, InputIterator last,
   ForwardIterator cur = result;
   __STL_TRY {
     for ( ; first != last; ++first, ++cur)
-      construct(&*cur, *first);
-    return cur;
+      construct(&*cur, *first);     // 必须一个一个元素的构造，无法批量进行
+    return cur;                   // 需要返回去，才知道，result被填充到哪里了
   }
   __STL_UNWIND(destroy(result, cur));
 }
@@ -62,8 +62,12 @@ template <class InputIterator, class ForwardIterator, class T>
 inline ForwardIterator
 __uninitialized_copy(InputIterator first, InputIterator last,
                      ForwardIterator result, T*) {
+  // 不加typename的话，在模板实例化之前，编译器不知道__type_traits<T1>::is_POD_type是啥
+  // 可能是静态数据成员、静态成员函数、嵌套类型，加上之后就知道了，是嵌套类型
+  // POD plain Old Data，也就是标准型别（scalar types）或传统的 C struct型别 
   typedef typename __type_traits<T>::is_POD_type is_POD;
   return __uninitialized_copy_aux(first, last, result, is_POD());
+  // 以上，企图利用 is_POD() 所获得的结果，让编译器做参数推导
 }
 
 template <class InputIterator, class ForwardIterator>
@@ -71,14 +75,21 @@ inline ForwardIterator
   uninitialized_copy(InputIterator first, InputIterator last,
                      ForwardIterator result) {
   return __uninitialized_copy(first, last, result, value_type(result));
+  // 以上，利用 value_type() 取出 result 的 value type
 }
 
+// 针对 char* 和 wchar_t* 两种型别，可以采用最具效率的做法 
+// memmove(直接移动内存内容)来执行复制行为 
+// 针对 const char* 的特化版本
 inline char* uninitialized_copy(const char* first, const char* last,
                                 char* result) {
   memmove(result, first, last - first);
   return result + (last - first);
 }
 
+// 针对 char* 和 wchar_t* 两种型别，可以采用最具效率的做法 
+// memmove(直接移动内存内容)来执行复制行为 
+// 针对 const wchar_t* 的特化版本
 inline wchar_t* uninitialized_copy(const wchar_t* first, const wchar_t* last,
                                    wchar_t* result) {
   memmove(result, first, sizeof(wchar_t) * (last - first));
@@ -123,7 +134,7 @@ inline void
 __uninitialized_fill_aux(ForwardIterator first, ForwardIterator last, 
                          const T& x, __true_type)
 {
-  fill(first, last, x);
+  fill(first, last, x);         // 调用STL算法fill()
 }
 
 template <class ForwardIterator, class T>
@@ -134,7 +145,7 @@ __uninitialized_fill_aux(ForwardIterator first, ForwardIterator last,
   ForwardIterator cur = first;
   __STL_TRY {
     for ( ; cur != last; ++cur)
-      construct(&*cur, x);
+      construct(&*cur, x);    // 见文件stl_construct.h, place new函数, 必须一个一个元素的构造，无法批量进行
   }
   __STL_UNWIND(destroy(first, cur));
 }
@@ -142,6 +153,9 @@ __uninitialized_fill_aux(ForwardIterator first, ForwardIterator last,
 template <class ForwardIterator, class T, class T1>
 inline void __uninitialized_fill(ForwardIterator first, ForwardIterator last, 
                                  const T& x, T1*) {
+  // 不加typename的话，在模板实例化之前，编译器不知道__type_traits<T1>::is_POD_type是啥
+  // 可能是静态数据成员、静态成员函数、嵌套类型，加上之后就知道了，是嵌套类型
+  // POD plain Old Data，也就是标准型别（scalar types）或传统的 C struct型别 
   typedef typename __type_traits<T1>::is_POD_type is_POD;
   __uninitialized_fill_aux(first, last, x, is_POD());
                    
@@ -150,18 +164,20 @@ inline void __uninitialized_fill(ForwardIterator first, ForwardIterator last,
 template <class ForwardIterator, class T>
 inline void uninitialized_fill(ForwardIterator first, ForwardIterator last, 
                                const T& x) {
+    // 利用value_type()函数提取处迭代器所指向的类型，这个函数返回类型是T*  template<class T,...> 最后 return T*(0)
   __uninitialized_fill(first, last, x, value_type(first));
 }
 
-// Valid if copy construction is equivalent to assignment, and if the
-//  destructor is trivial.
+// 如果是POD型别，必然拥有trival ctor/dtor/copy/assignment函数
+// 因此可以对 POD 型别采用最有效率的初值填写手法
 template <class ForwardIterator, class Size, class T>
 inline ForwardIterator
 __uninitialized_fill_n_aux(ForwardIterator first, Size n,
                            const T& x, __true_type) {
-  return fill_n(first, n, x);
+  return fill_n(first, n, x);     // 交由高阶函数执行，见6.4.2
 }
 
+// 而对non-POD型别采取最保险安全的做法
 template <class ForwardIterator, class Size, class T>
 ForwardIterator
 __uninitialized_fill_n_aux(ForwardIterator first, Size n,
@@ -169,8 +185,8 @@ __uninitialized_fill_n_aux(ForwardIterator first, Size n,
   ForwardIterator cur = first;
   __STL_TRY {
     for ( ; n > 0; --n, ++cur)
-      construct(&*cur, x);
-    return cur;
+      construct(&*cur, x);     // 见文件stl_construct.h, place new函数
+    return cur;               // 要返回去，才知道填充结束的位置
   }
   __STL_UNWIND(destroy(first, cur));
 }
@@ -178,7 +194,11 @@ __uninitialized_fill_n_aux(ForwardIterator first, Size n,
 template <class ForwardIterator, class Size, class T, class T1>
 inline ForwardIterator __uninitialized_fill_n(ForwardIterator first, Size n,
                                               const T& x, T1*) {
+  // 不加typename的话，在模板实例化之前，编译器不知道__type_traits<T1>::is_POD_type是啥
+  // 可能是静态数据成员、静态成员函数、嵌套类型，加上之后就知道了，是嵌套类型
+  // POD plain Old Data，也就是标准型别（scalar types）或传统的 C struct型别 
   typedef typename __type_traits<T1>::is_POD_type is_POD;
+  // is_POD()为构造函数，产生一个is_POD的object
   return __uninitialized_fill_n_aux(first, n, x, is_POD());
                                     
 }
@@ -187,6 +207,7 @@ template <class ForwardIterator, class Size, class T>
 inline ForwardIterator uninitialized_fill_n(ForwardIterator first, Size n,
                                             const T& x) {
   return __uninitialized_fill_n(first, n, x, value_type(first));
+  // 以上，利用 value_type() 取出 first 的 value type
 }
 
 // Copies [first1, last1) into [result, result + (last1 - first1)), and
