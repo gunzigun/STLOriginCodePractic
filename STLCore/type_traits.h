@@ -60,21 +60,18 @@ struct __false_type {
 template <class type>
 struct __type_traits { 
    typedef __true_type     this_dummy_member_must_be_first;
-                   /* Do not remove this member. It informs a compiler which
-                      automatically specializes __type_traits that this
-                      __type_traits template is special. It just makes sure that
-                      things work if an implementation is using a template
-                      called __type_traits for something unrelated. */
+                   /* 不要移除这个成员。它通知“有能力自动将 __type_traits 特化”
+                      的编译器说，我们现在所看到的的这个__type_traits template 是特
+                      殊的。这是为了确保万一编译器也使用一个名为 __type_traits 而其
+                      实与此处定义并无任何关联的 template 时，所有事情都仍将顺利运作
+                   */
 
-   /* The following restrictions should be observed for the sake of
-      compilers which automatically produce type specific specializations 
-      of this class:
-          - You may reorder the members below if you wish
-          - You may remove any of the members below if you wish
-          - You must not rename members without making the corresponding
-            name change in the compiler
-          - Members you add will be treated like regular members unless
-            you add the appropriate support in the compiler. */
+   /* 以下条件应被遵守，因为编译器有可能自动为各型别产生专属的 __type_traits 特化版本：
+          - 你可以重新排列以下的成员次序
+          - 你可以移除以下任何成员
+          - 绝对不可以将以下成员重新命名而却没有改变编译器中的对应名称
+          - 新加入的成员会被视为一般成员，除非你在编译器中加上适当支持
+   */
  
 
    typedef __false_type    has_trivial_default_constructor;
@@ -85,10 +82,17 @@ struct __type_traits {
 };
 
 
-
-// Provide some specializations.  This is harmless for compilers that
-//  have built-in __types_traits support, and essential for compilers
-//  that don't.
+/*
+   以下针对C++基本型别 
+   char, signed char, unsigned char, 
+   short, unsigned short
+   int, unsigned int
+   long, unsigned long
+   float, double, long double
+   提供特化版本。
+   注意：每一个成员值都是 __true_type，表示这些性型别都可以采用最快速的方式（例如memcpy）
+   来进行拷贝（copy）或赋值（assign）操作
+*/
 
 __STL_TEMPLATE_NULL struct __type_traits<char> {
    typedef __true_type    has_trivial_default_constructor;
@@ -188,6 +192,8 @@ __STL_TEMPLATE_NULL struct __type_traits<long double> {
 
 #ifdef __STL_CLASS_PARTIAL_SPECIALIZATION
 
+// 注意，以下指针对原生类型设计 __type_traits 偏特化版本
+// 原生指针亦被视为一种标量型别
 template <class T>
 struct __type_traits<T*> {
    typedef __true_type    has_trivial_default_constructor;
