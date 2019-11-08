@@ -75,7 +75,7 @@ inline ForwardIterator
   uninitialized_copy(InputIterator first, InputIterator last,
                      ForwardIterator result) {
   return __uninitialized_copy(first, last, result, value_type(result));
-  // 以上，利用 value_type() 取出 result 的 value type
+  // 以上，利用 value_type() 萃取出 result 的 value type
 }
 
 // 针对 char* 和 wchar_t* 两种型别，可以采用最具效率的做法 
