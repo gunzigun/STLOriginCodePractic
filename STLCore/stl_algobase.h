@@ -219,6 +219,8 @@ template <class BidirectionalIterator1, class BidirectionalIterator2>
 inline BidirectionalIterator2 __copy_backward(BidirectionalIterator1 first, 
                                               BidirectionalIterator1 last, 
                                               BidirectionalIterator2 result) {
+  // 整个空间为[first,last,result)
+  // 这个while循环，吧[first,last)的元素移动到[last-first,result)
   while (first != last) *--result = *--last;
   return result;
 }
