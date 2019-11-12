@@ -221,6 +221,8 @@ inline Value* value_type(const __rb_tree_iterator<Value, Ref, Ptr>&) {
 inline void 
 __rb_tree_rotate_left(__rb_tree_node_base* x, __rb_tree_node_base*& root)
 {
+  std::cout << "__rb_tree_rotate_left" << std::endl;
+
   // x为旋转点
   __rb_tree_node_base* y = x->right;      // 令y为旋转点的右节点
   x->right = y->left;
@@ -242,6 +244,7 @@ __rb_tree_rotate_left(__rb_tree_node_base* x, __rb_tree_node_base*& root)
 inline void 
 __rb_tree_rotate_right(__rb_tree_node_base* x, __rb_tree_node_base*& root)
 {
+  std::cout << "__rb_tree_rotate_right" << std::endl;
   // x为旋转点
   __rb_tree_node_base* y = x->left;   // 令y为旋转节点的左节点
   x->left = y->right;
@@ -266,6 +269,7 @@ __rb_tree_rotate_right(__rb_tree_node_base* x, __rb_tree_node_base*& root)
 inline void 
 __rb_tree_rebalance(__rb_tree_node_base* x, __rb_tree_node_base*& root)
 {
+  std::cout << "__rb_tree_rebalance" << std::endl;
   x->color = __rb_tree_red;           // 新节点必须为红
   while (x != root && x->parent->color == __rb_tree_red) {  // 当x的父节点为红时，才需要调整
     if (x->parent == x->parent->parent->left) {             // 父节点为祖父节点的左节点
