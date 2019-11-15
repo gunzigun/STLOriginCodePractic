@@ -67,7 +67,7 @@ inline void __iter_swap(ForwardIterator1 a, ForwardIterator2 b, T*) {
 
 template <class ForwardIterator1, class ForwardIterator2>
 inline void iter_swap(ForwardIterator1 a, ForwardIterator2 b) {
-  __iter_swap(a, b, value_type(a));
+  __iter_swap(a, b, value_type(a));       // 注意第三参数的型别
 }
 
 template <class T>
@@ -96,12 +96,12 @@ inline const T& max(const T& a, const T& b) {
 
 template <class T, class Compare>
 inline const T& min(const T& a, const T& b, Compare comp) {
-  return comp(b, a) ? b : a;
+  return comp(b, a) ? b : a;         // 由comp决定“大小比较”标准 
 }
 
 template <class T, class Compare>
 inline const T& max(const T& a, const T& b, Compare comp) {
-  return comp(a, b) ? b : a;
+  return comp(a, b) ? b : a;        // 由comp决定“大小比较”标准 
 }
 
 template <class InputIterator, class OutputIterator>
@@ -309,14 +309,14 @@ copy_n(InputIterator first, Size count,
 
 template <class ForwardIterator, class T>
 void fill(ForwardIterator first, ForwardIterator last, const T& value) {
-  for ( ; first != last; ++first)
-    *first = value;
+  for ( ; first != last; ++first)         // 迭代走过整个区间
+    *first = value;                       // 设定新值
 }
 
 template <class OutputIterator, class Size, class T>
 OutputIterator fill_n(OutputIterator first, Size n, const T& value) {
-  for ( ; n > 0; --n, ++first)
-    *first = value;
+  for ( ; n > 0; --n, ++first)            // 经过n个元素
+    *first = value;                       // 设定新值
   return first;
 }
 
@@ -324,6 +324,9 @@ template <class InputIterator1, class InputIterator2>
 pair<InputIterator1, InputIterator2> mismatch(InputIterator1 first1,
 					      InputIterator1 last1,
 					      InputIterator2 first2) {
+  // 以下，如果序列1走完，就结束
+  // 以下，如果序列1和序列2的对应元素相等，就结束
+  // 显然，序列1的元素个数必须多过序列2的元素个数，否则结果不可预期
   while (first1 != last1 && *first1 == *first2) {
     ++first1;
     ++first2;
@@ -346,10 +349,12 @@ pair<InputIterator1, InputIterator2> mismatch(InputIterator1 first1,
 template <class InputIterator1, class InputIterator2>
 inline bool equal(InputIterator1 first1, InputIterator1 last1,
 		  InputIterator2 first2) {
+  // 以下将序列一走过一遍，序列二亦步亦趋
+  // 如果序列1的元素个数过多过序列2的元素个数，就糟糕了
   for ( ; first1 != last1; ++first1, ++first2)
-    if (*first1 != *first2)
-      return false;
-  return true;
+    if (*first1 != *first2)            // 只要对应元素不相等
+      return false;                    // 就结束并返回false
+  return true;                         // 至此，全部相等，返回true
 }
 
 template <class InputIterator1, class InputIterator2, class BinaryPredicate>
@@ -364,12 +369,15 @@ inline bool equal(InputIterator1 first1, InputIterator1 last1,
 template <class InputIterator1, class InputIterator2>
 bool lexicographical_compare(InputIterator1 first1, InputIterator1 last1,
 			     InputIterator2 first2, InputIterator2 last2) {
+  // 以下，任何一个序列达到尾端，就结束，否则两序列就相应元素一一进行比较
   for ( ; first1 != last1 && first2 != last2; ++first1, ++first2) {
-    if (*first1 < *first2)
+    if (*first1 < *first2)        // 第一序列元素值小于第二序列的相应元素值 
       return true;
-    if (*first2 < *first1)
+    if (*first2 < *first1)        // 第二序列元素值小于第一序列的相应元素值
       return false;
+    // 如果不符合以上两条件，表示两值相等，那就进行下一组相应元素值的比对
   }
+  // 进行到这里，如果第一序列到达尾端而第二序列尚有余额，那么第一序列小于第二序列
   return first1 == last1 && first2 != last2;
 }
 
@@ -392,9 +400,11 @@ lexicographical_compare(const unsigned char* first1,
                         const unsigned char* first2,
                         const unsigned char* last2)
 {
-  const size_t len1 = last1 - first1;
-  const size_t len2 = last2 - first2;
-  const int result = memcmp(first1, first2, min(len1, len2));
+  const size_t len1 = last1 - first1;       // 第一序列长度
+  const size_t len2 = last2 - first2;       // 第二序列长度
+  // 先比较相同长度的一段，memcmp()速度极快
+  const int result = memcmp(first1, first2, min(len1, len2));     
+  // 如果不相上下，则长度比较长者被视为比较大
   return result != 0 ? result < 0 : len1 < len2;
 }
 
