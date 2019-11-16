@@ -104,10 +104,13 @@ inline const T& max(const T& a, const T& b, Compare comp) {
   return comp(a, b) ? b : a;        // 由comp决定“大小比较”标准 
 }
 
+// InputIterator版本
 template <class InputIterator, class OutputIterator>
 inline OutputIterator __copy(InputIterator first, InputIterator last,
                              OutputIterator result, input_iterator_tag)
 {
+  cout << "__copy(InputIterator)" << endl;
+  // 以迭代器等同于否，决定循环是否继续，速度慢
   for ( ; first != last; ++result, ++first)
     *result = *first;
   return result;
@@ -118,54 +121,69 @@ inline OutputIterator
 __copy_d(RandomAccessIterator first, RandomAccessIterator last,
          OutputIterator result, Distance*)
 {
+  cout << "__copy_d" << endl;
+  // 以n（原串长度）决定循环执行次数，速度快
   for (Distance n = last - first; n > 0; --n, ++result, ++first) 
     *result = *first;
   return result;
 }
 
+// RandomAccessIterator 版本
 template <class RandomAccessIterator, class OutputIterator>
 inline OutputIterator 
 __copy(RandomAccessIterator first, RandomAccessIterator last,
        OutputIterator result, random_access_iterator_tag)
 {
+  cout << "__copy(RandomAccessIterator)" << endl;
+  // 又划分出一个函数，为的是其它地方也可能用到
   return __copy_d(first, last, result, distance_type(first));
 }
 
+// 完全泛化版本
 template <class InputIterator, class OutputIterator>
 struct __copy_dispatch
 {
   OutputIterator operator()(InputIterator first, InputIterator last,
                             OutputIterator result) {
+    cout << "__copy_dispatch()" << endl;
     return __copy(first, last, result, iterator_category(first));
   }
 };
 
 #ifdef __STL_CLASS_PARTIAL_SPECIALIZATION 
 
+// 以下版本适用于“指针所指对象具备trivial assignment operator”
 template <class T>
 inline T* __copy_t(const T* first, const T* last, T* result, __true_type) {
+  cout << "__copy_t(true_type)" << endl;
   memmove(result, first, sizeof(T) * (last - first));
   return result + (last - first);
 }
 
+// 以下版本适用于“指针所指对象具备non-trivial assignment operator”
 template <class T>
 inline T* __copy_t(const T* first, const T* last, T* result, __false_type) {
+  cout << "__copy_t(false_type)" << endl;
   return __copy_d(first, last, result, (ptrdiff_t*) 0);
 }
 
+// 偏特化版本（1），两个参数都是T*指针形式
 template <class T>
 struct __copy_dispatch<T*, T*>
 {
   T* operator()(T* first, T* last, T* result) {
+    cout << "__copy_dispatch(T*, T*)" << endl;
     typedef typename __type_traits<T>::has_trivial_assignment_operator t; 
     return __copy_t(first, last, result, t());
   }
 };
 
+// 偏特化版本（2），第一个参数为const T*指针形式，第二参数为T*指针形式
 template <class T>
 struct __copy_dispatch<const T*, T*>
 {
   T* operator()(const T* first, const T* last, T* result) {
+    cout << "__copy_dispatch(const T*, T*)" << endl;
     typedef typename __type_traits<T>::has_trivial_assignment_operator t; 
     return __copy_t(first, last, result, t());
   }
@@ -173,14 +191,18 @@ struct __copy_dispatch<const T*, T*>
 
 #endif /* __STL_CLASS_PARTIAL_SPECIALIZATION */
 
+// 完全泛化版本
 template <class InputIterator, class OutputIterator>
 inline OutputIterator copy(InputIterator first, InputIterator last,
                            OutputIterator result)
 {
+  cout << "copy()" << endl;
   return __copy_dispatch<InputIterator,OutputIterator>()(first, last, result);
 }
 
+// 特殊版本（1），重载形式
 inline char* copy(const char* first, const char* last, char* result) {
+  cout << "copy(const char*)" << endl;
   memmove(result, first, last - first);
   return result + (last - first);
 }
@@ -209,8 +231,10 @@ void* memmove(void* str1,const void* str2,size_t n)
   return str1;
 }
 */
+// 特殊版本（2），重载形式
 inline wchar_t* copy(const wchar_t* first, const wchar_t* last,
                      wchar_t* result) {
+  cout << "copy(const wchar_t*)" << endl;
   memmove(result, first, sizeof(wchar_t) * (last - first));
   return result + (last - first);
 }
