@@ -106,7 +106,6 @@ int main()
     replace(iv.begin(),iv.end(),6,3);  
     for_each(iv.begin(),iv.end(),display<int>());  
     cout<<endl; //iv:8 10 7 8 3 3 7 8 3 7 8   
-      
      
     //将容器中3 替换为 5 放入另一个容器   
     replace_copy(iv.begin(),iv.end(),iv3.begin(),3,5);  

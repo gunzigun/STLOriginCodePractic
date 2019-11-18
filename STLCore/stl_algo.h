@@ -175,23 +175,23 @@ ForwardIterator1 __search(ForwardIterator1 first1, ForwardIterator1 last1,
   Distance2 d2 = 0;
   distance(first2, last2, d2);
 
-  if (d1 < d2) return last1;
+  if (d1 < d2) return last1;      // 如果第二序列大于第一序列，不可能成为其子序列
 
   ForwardIterator1 current1 = first1;
   ForwardIterator2 current2 = first2;
 
-  while (current2 != last2) 
-    if (*current1 == *current2) {
-      ++current1;
+  while (current2 != last2)       // 遍历整个第二序列
+    if (*current1 == *current2) {   // 如果两个元素相同
+      ++current1;                       // 调整，以便对比下一个元素
       ++current2;
     }
-    else {
-      if (d1 == d2)
-        return last1;
-      else {
-        current1 = ++first1;
-        current2 = first2;
-        --d1;
+    else {                          // 如果两个元素不等
+      if (d1 == d2)                     // 如果两序列一样长
+        return last1;                       // 表示不可能成功了
+      else {                            // 两序列不一样长，那么肯定序列一比序列二长
+        current1 = ++first1;                // 调整第一序列的标兵
+        current2 = first2;                  // 准备在新的起点上再找一次
+        --d1;             // 已经排除了序列一的一个元素，所以序列一的长度要减1
       }
     }
   return first1;
@@ -246,30 +246,34 @@ inline ForwardIterator1 search(ForwardIterator1 first1, ForwardIterator1 last1,
                   distance_type(first1), distance_type(first2));
 }
 
+// 版本1
+// 查找“元素value连续出现count次”所形成的那个子序列，返回其发生位置
 template <class ForwardIterator, class Integer, class T>
 ForwardIterator search_n(ForwardIterator first, ForwardIterator last,
                          Integer count, const T& value) {
   if (count <= 0)
     return first;
   else {
-    first = find(first, last, value);
-    while (first != last) {
-      Integer n = count - 1;
-      ForwardIterator i = first;
+    first = find(first, last, value);     // 首先找出value第一次出现点
+    while (first != last) {               // 继续查找余下元素
+      Integer n = count - 1;              // value 还应出现count-1次
+      ForwardIterator i = first;          // 从上次出现点接下去找
       ++i;
-      while (i != last && n != 0 && *i == value) {
+      while (i != last && n != 0 && *i == value) {    // 下个元素是value。good
         ++i;
-        --n;
-      }
-      if (n == 0)
+        --n;                        // 既然找到了，“value应该再出现数次”，便可减1
+      }                             // 回到内循环内继续查找
+      if (n == 0)     // n==0表示确实找到了，“元素值出现count次”的子序列，功德圆满
         return first;
-      else
-        first = find(i, last, value);
+      else            // 功德尚未圆满
+        first = find(i, last, value);    // 找value的下一个出现点，并准备回到外循环
     }
     return last;
   }
 }
 
+// 版本2
+// 查找“连续count个元素皆满足指定条件”所形成的那个子序列，返回其发生位置
 template <class ForwardIterator, class Integer, class T, class BinaryPredicate>
 ForwardIterator search_n(ForwardIterator first, ForwardIterator last,
                          Integer count, const T& value,
@@ -278,31 +282,33 @@ ForwardIterator search_n(ForwardIterator first, ForwardIterator last,
     return first;
   else {
     while (first != last) {
-      if (binary_pred(*first, value)) break;
-      ++first;
+      if (binary_pred(*first, value)) break;      // 首先找出第一个符合条件的元素
+      ++first;                                      // 找到就离开
     }
-    while (first != last) {
-      Integer n = count - 1;
-      ForwardIterator i = first;
+    while (first != last) {                        // 继续查找余下元素
+      Integer n = count - 1;                       // 还有count-1个元素满足条件
+      ForwardIterator i = first;                   // 从上次出现点接下去查找
       ++i;
+      // 以下循环确定接下来count-1个元素是否都符合条件
       while (i != last && n != 0 && binary_pred(*i, value)) {
         ++i;
-        --n;
+        --n;          // 既然这个元素符合条件，“应符合条件的元素个数”便可减1
       }
-      if (n == 0)
+      if (n == 0)     // n==0表示确实找到了，“count次符合条件”的子序列，功德圆满
         return first;
-      else {
+      else {                // 功德尚未圆满。。。
         while (i != last) {
-          if (binary_pred(*i, value)) break;
+          if (binary_pred(*i, value)) break;       // 找value的下一个出现点，并准备回到外循环
           ++i;
         }
-        first = i;
+        first = i;                                 // 准备回到外循环 
       }
     }
     return last;
   }
 } 
 
+// 将两段等长区间内的元素互换
 template <class ForwardIterator1, class ForwardIterator2>
 ForwardIterator2 swap_ranges(ForwardIterator1 first1, ForwardIterator1 last1,
                              ForwardIterator2 first2) {
@@ -314,6 +320,7 @@ ForwardIterator2 swap_ranges(ForwardIterator1 first1, ForwardIterator1 last1,
 template <class InputIterator, class OutputIterator, class UnaryOperation>
 OutputIterator transform(InputIterator first, InputIterator last,
                          OutputIterator result, UnaryOperation op) {
+  // 对每个元素执行op操作
   for ( ; first != last; ++first, ++result)
     *result = op(*first);
   return result;
@@ -324,6 +331,7 @@ template <class InputIterator1, class InputIterator2, class OutputIterator,
 OutputIterator transform(InputIterator1 first1, InputIterator1 last1,
                          InputIterator2 first2, OutputIterator result,
                          BinaryOperation binary_op) {
+  // 对区间1和区间2的元素，做binary_op（二元）操作，结果放在result里
   for ( ; first1 != last1; ++first1, ++first2, ++result)
     *result = binary_op(*first1, *first2);
   return result;
@@ -332,6 +340,7 @@ OutputIterator transform(InputIterator1 first1, InputIterator1 last1,
 template <class ForwardIterator, class T>
 void replace(ForwardIterator first, ForwardIterator last, const T& old_value,
              const T& new_value) {
+  // 将区间内的所有old_value都以new_value取代
   for ( ; first != last; ++first)
     if (*first == old_value) *first = new_value;
 }
@@ -340,6 +349,7 @@ template <class ForwardIterator, class Predicate, class T>
 void replace_if(ForwardIterator first, ForwardIterator last, Predicate pred,
                 const T& new_value) {
   for ( ; first != last; ++first)
+    // 自定义一个替换条件
     if (pred(*first)) *first = new_value;
 }
 
@@ -348,6 +358,8 @@ OutputIterator replace_copy(InputIterator first, InputIterator last,
                             OutputIterator result, const T& old_value,
                             const T& new_value) {
   for ( ; first != last; ++first, ++result)
+    // 如果旧序列上的元素等于old_valued,就放new_value到新序列中
+    // 否则就将元素拷贝一份放进新序列中
     *result = *first == old_value ? new_value : *first;
   return result;
 }
@@ -357,6 +369,8 @@ OutputIterator replace_copy_if(Iterator first, Iterator last,
                                OutputIterator result, Predicate pred,
                                const T& new_value) {
   for ( ; first != last; ++first, ++result)
+    // 如果旧序列上的元素被pred评估为true,就放new_value到新序列中
+    // 否则就将元素拷贝一份放进新序列中
     *result = pred(*first) ? new_value : *first;
   return result;
 }
@@ -378,9 +392,9 @@ template <class InputIterator, class OutputIterator, class T>
 OutputIterator remove_copy(InputIterator first, InputIterator last,
                            OutputIterator result, const T& value) {
   for ( ; first != last; ++first)
-    if (*first != value) {
-      *result = *first;
-      ++result;
+    if (*first != value) {      // 如果不相等
+      *result = *first;         // 就赋值给新容器
+      ++result;                 // 新容器前进一个位置
     }
   return result;
 }
@@ -388,10 +402,10 @@ OutputIterator remove_copy(InputIterator first, InputIterator last,
 template <class InputIterator, class OutputIterator, class Predicate>
 OutputIterator remove_copy_if(InputIterator first, InputIterator last,
                               OutputIterator result, Predicate pred) {
-  for ( ; first != last; ++first)
-    if (!pred(*first)) {
-      *result = *first;
-      ++result;
+  for ( ; first != last; ++first)     
+    if (!pred(*first)) {        // 如果pred核定为false
+      *result = *first;         // 就赋值给新容器（保留，不删除）
+      ++result;                 // 新容器前进一个位置
     }
   return result;
 }
@@ -399,32 +413,40 @@ OutputIterator remove_copy_if(InputIterator first, InputIterator last,
 template <class ForwardIterator, class T>
 ForwardIterator remove(ForwardIterator first, ForwardIterator last,
                        const T& value) {
-  first = find(first, last, value);
-  ForwardIterator next = first;
+  first = find(first, last, value);       // 利用循序查找法找出第一个相等元素
+  ForwardIterator next = first;           // 以next标示出来
+  // 以下利用“remove_copy()允许新旧容器重叠”的性质，进行移除操作
+  // 并将结果指定置于原容器中
   return first == last ? first : remove_copy(++next, last, first, value);
 }
 
 template <class ForwardIterator, class Predicate>
 ForwardIterator remove_if(ForwardIterator first, ForwardIterator last,
                           Predicate pred) {
-  first = find_if(first, last, pred);
-  ForwardIterator next = first;
+  first = find_if(first, last, pred);     // 利用循序查找法找出第一个匹配者
+  ForwardIterator next = first;           // 以next标记出来
+  // 以下利用“remove_copy_if()允许新旧容器重叠”的性质，进行移除操作
+  // 并将结果指定置于原容器中
   return first == last ? first : remove_copy_if(++next, last, first, pred);
 }
 
 template <class InputIterator, class ForwardIterator>
 ForwardIterator __unique_copy(InputIterator first, InputIterator last,
                               ForwardIterator result, forward_iterator_tag) {
-  *result = *first;
-  while (++first != last)
+  *result = *first;               // 记录第一个元素
+  while (++first != last)         // 遍历整个区间
+    // 以下，元素不同，就记录，否则（元素相同），就跳过
     if (*result != *first) *++result = *first;
   return ++result;
 }
 
-
+// 由于output iterator 为write only，无法像forward iterator 那般可以读取
+// 所以不能有类似 *result != *first这样的判断操作，所以才需要设计这一版本
+// 例如ostream_iterator就是一个output iterator
 template <class InputIterator, class OutputIterator, class T>
 OutputIterator __unique_copy(InputIterator first, InputIterator last,
                              OutputIterator result, T*) {
+  // T为output iterator的value type
   T value = *first;
   *result = value;
   while (++first != last)
@@ -439,6 +461,7 @@ template <class InputIterator, class OutputIterator>
 inline OutputIterator __unique_copy(InputIterator first, InputIterator last,
                                     OutputIterator result, 
                                     output_iterator_tag) {
+  // 以下output iterator 有一些功能限制，所以必须先知道其value type
   return __unique_copy(first, last, result, value_type(first));
 }
 
@@ -446,6 +469,7 @@ template <class InputIterator, class OutputIterator>
 inline OutputIterator unique_copy(InputIterator first, InputIterator last,
                                   OutputIterator result) {
   if (first == last) return result;
+  // 以下根据result的iterator category,做不同的处理
   return __unique_copy(first, last, result, iterator_category(result));
 }
 template <class InputIterator, class ForwardIterator, class BinaryPredicate>
@@ -493,8 +517,8 @@ inline OutputIterator unique_copy(InputIterator first, InputIterator last,
 
 template <class ForwardIterator>
 ForwardIterator unique(ForwardIterator first, ForwardIterator last) {
-  first = adjacent_find(first, last);
-  return unique_copy(first, last, first);
+  first = adjacent_find(first, last);     // 首先找到相邻重复元素的起点
+  return unique_copy(first, last, first);     // 利用unique_copy完成
 }
 
 template <class ForwardIterator, class BinaryPredicate>
@@ -517,6 +541,8 @@ void __reverse(BidirectionalIterator first, BidirectionalIterator last,
 template <class RandomAccessIterator>
 void __reverse(RandomAccessIterator first, RandomAccessIterator last,
                random_access_iterator_tag) {
+  // 以下，头尾两两互换，然后头部累进一个位置，尾部累退一个位置，两者交错时即停止
+  // 注意，只有random iterators才能做一下的 first < last
   while (first < last) iter_swap(first++, --last);
 }
 
@@ -529,30 +555,33 @@ template <class BidirectionalIterator, class OutputIterator>
 OutputIterator reverse_copy(BidirectionalIterator first,
                             BidirectionalIterator last,
                             OutputIterator result) {
-  while (first != last) {
-    --last;
-    *result = *last;
-    ++result;
+  while (first != last) {     // 整个序列走一遍
+    --last;                   // 尾端前移一个位置
+    *result = *last;          // 将尾端所指元素复制到result所指位置
+    ++result;                 // result前进一个位置
   }
   return result;
 }
 
+// rotate的forward iterator版
 template <class ForwardIterator, class Distance>
 void __rotate(ForwardIterator first, ForwardIterator middle,
               ForwardIterator last, Distance*, forward_iterator_tag) {
   for (ForwardIterator i = middle; ;) {
-    iter_swap(first, i);
-    ++first;
-    ++i;
-    if (first == middle) {
-      if (i == last) return;
-      middle = i;
+    iter_swap(first, i);      // 前段、后段的元素一一交换
+    ++first;                  
+    ++i;                      // 双双前进1
+    // 以下判断是前段[first,middle)先结束还是后段[middle,last)先结束
+    if (first == middle) {        // 前段先结束
+      if (i == last) return;        // 如果后段同时也结束了，整个就结束了
+      middle = i;                   // 否则调整，对新的前、后段再做交换
     }
-    else if (i == last)
-      i = middle;
+    else if (i == last)           // 后段先结束
+      i = middle;                   // 调整，准备对新的前、后段再作交换
   }
 }
 
+// rotate的bidirectional iterator版
 template <class BidirectionalIterator, class Distance>
 void __rotate(BidirectionalIterator first, BidirectionalIterator middle,
               BidirectionalIterator last, Distance*,
@@ -562,6 +591,7 @@ void __rotate(BidirectionalIterator first, BidirectionalIterator middle,
   reverse(first, last);
 }
 
+// 辗转相除法，求最大公因子
 template <class EuclideanRingElement>
 EuclideanRingElement __gcd(EuclideanRingElement m, EuclideanRingElement n)
 {
@@ -590,10 +620,13 @@ void __rotate_cycle(RandomAccessIterator first, RandomAccessIterator last,
   *ptr1 = value;
 }
 
+// rotate的random_access_iterator版
 template <class RandomAccessIterator, class Distance>
 void __rotate(RandomAccessIterator first, RandomAccessIterator middle,
               RandomAccessIterator last, Distance*,
               random_access_iterator_tag) {
+  // 以下迭代器的相减操作，只适用于random_access_iterator
+  // 去全长和前段长度最大公因子 
   Distance n = __gcd(last - first, middle - first);
   while (n--)
     __rotate_cycle(first, last, first + n, middle - first,
@@ -611,6 +644,7 @@ inline void rotate(ForwardIterator first, ForwardIterator middle,
 template <class ForwardIterator, class OutputIterator>
 OutputIterator rotate_copy(ForwardIterator first, ForwardIterator middle,
                            ForwardIterator last, OutputIterator result) {
+  // 先把[middle,last)拷贝到result，返回，最尾端地址，接着把[first,last)拷贝到最尾端地址
   return copy(first, middle, copy(middle, last, result));
 }
 
@@ -755,11 +789,15 @@ random_sample(InputIterator first, InputIterator last,
 }
 
 
-
+// 所有被pred判定为true的元素，都被放到前段
+// 被pred判定为false的元素，都被放到后段
+// 不保证保留原相对位置
 template <class BidirectionalIterator, class Predicate>
 BidirectionalIterator partition(BidirectionalIterator first,
                                 BidirectionalIterator last, Predicate pred) {
+  // 多轮交换，知道first和last指向同一个位置
   while (true) {
+    // 重前往后，找到下一个不满足pred的元素位置，由first指向
     while (true)
       if (first == last)
         return first;
@@ -767,7 +805,9 @@ BidirectionalIterator partition(BidirectionalIterator first,
         ++first;
       else
         break;
+    // last为最后一个元素的下一个，所以要往前一个
     --last;
+    // 重后往前，找到下一个不满足pred的元素位置，由last指向
     while (true)
       if (first == last)
         return first;
@@ -775,6 +815,7 @@ BidirectionalIterator partition(BidirectionalIterator first,
         --last;
       else
         break;
+    // 交换两个位置上的值
     iter_swap(first, last);
     ++first;
   }
