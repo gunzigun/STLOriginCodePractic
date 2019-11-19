@@ -39,20 +39,21 @@ __STL_BEGIN_NAMESPACE
 #pragma set woff 1209
 #endif
 
+// 返回a，b，c之居中者
 template <class T>
 inline const T& __median(const T& a, const T& b, const T& c) {
   if (a < b)
-    if (b < c)
+    if (b < c)          // a < b < c 
       return b;
-    else if (a < c)
+    else if (a < c)     // a < c < b
       return c;
-    else
+    else                // c < a < b
       return a;
-  else if (a < c)
+  else if (a < c)       // b < a < c
     return a;
-  else if (b < c)
+  else if (b < c)       // b < c < a
     return c;
-  else
+  else                  // c < b < a
     return b;
 }
 
@@ -910,12 +911,13 @@ RandomAccessIterator __unguarded_partition(RandomAccessIterator first,
                                            RandomAccessIterator last, 
                                            T pivot) {
   while (true) {
-    while (*first < pivot) ++first;
-    --last;
-    while (pivot < *last) --last;
-    if (!(first < last)) return first;
-    iter_swap(first, last);
-    ++first;
+    while (*first < pivot) ++first;       // first 找到 >= pivot 的元素就停下来
+    --last;                               // 调整
+    while (pivot < *last) --last;         // last 找到 <= pivot 的元素就停下来
+    // 注意，以下first < last 判断操作，只适用于random iterator 
+    if (!(first < last)) return first;        // 交错循环结束
+    iter_swap(first, last);                   // 大小值交换
+    ++first;                                  // 调整
   }
 }    
 
@@ -938,14 +940,17 @@ const int __stl_threshold = 16;
 
 template <class RandomAccessIterator, class T>
 void __unguarded_linear_insert(RandomAccessIterator last, T value) {
+  // value为尾元素的值
   RandomAccessIterator next = last;
   --next;
-  while (value < *next) {
-    *last = *next;
-    last = next;
-    --next;
+  // insertion sort 的内循环
+  // 注意，一旦不再出现逆转对（inversion），循环就可以结束了
+  while (value < *next) {       // 逆转对（inversion）存在
+    *last = *next;              // 调整 
+    last = next;                // 调整迭代器
+    --next;                     // 左移一个位置
   }
-  *last = value;
+  *last = value;                // value的正确落脚处
 }
 
 template <class RandomAccessIterator, class T, class Compare>
@@ -964,12 +969,13 @@ void __unguarded_linear_insert(RandomAccessIterator last, T value,
 template <class RandomAccessIterator, class T>
 inline void __linear_insert(RandomAccessIterator first, 
                             RandomAccessIterator last, T*) {
-  T value = *last;
-  if (value < *first) {
-    copy_backward(first, last, last + 1);
-    *first = value;
+  T value = *last;      // 记录尾元素
+  if (value < *first) {       // 尾比头还小（注意，头端必为最小元素）
+    // 那么久别一个个比较了，一直做完
+    copy_backward(first, last, last + 1);  // 将整个区间后移一个位置
+    *first = value;                        // 令头元素等于原来的尾元素值
   }
-  else
+  else        // 尾不小于头
     __unguarded_linear_insert(last, value);
 }
 
@@ -996,15 +1002,16 @@ template <class RandomAccessIterator, class Compare>
 void __insertion_sort(RandomAccessIterator first,
                       RandomAccessIterator last, Compare comp) {
   if (first == last) return;
-  for (RandomAccessIterator i = first + 1; i != last; ++i)
+  for (RandomAccessIterator i = first + 1; i != last; ++i)      // 外循环
     __linear_insert(first, i, value_type(first), comp);
+    // 以上，[first,i)形成一个子区间
 }
 
 template <class RandomAccessIterator, class T>
 void __unguarded_insertion_sort_aux(RandomAccessIterator first, 
                                     RandomAccessIterator last, T*) {
   for (RandomAccessIterator i = first; i != last; ++i)
-    __unguarded_linear_insert(i, T(*i));
+    __unguarded_linear_insert(i, T(*i));      // 见先前展示
 }
 
 template <class RandomAccessIterator>
@@ -1031,9 +1038,9 @@ inline void __unguarded_insertion_sort(RandomAccessIterator first,
 template <class RandomAccessIterator>
 void __final_insertion_sort(RandomAccessIterator first, 
                             RandomAccessIterator last) {
-  if (last - first > __stl_threshold) {
-    __insertion_sort(first, first + __stl_threshold);
-    __unguarded_insertion_sort(first + __stl_threshold, last);
+  if (last - first > __stl_threshold) { // > 16
+    __insertion_sort(first, first + __stl_threshold);   //前半段排序
+    __unguarded_insertion_sort(first + __stl_threshold, last);      // 后半段排序
   }
   else
     __insertion_sort(first, last);
@@ -1042,7 +1049,7 @@ void __final_insertion_sort(RandomAccessIterator first,
 template <class RandomAccessIterator, class Compare>
 void __final_insertion_sort(RandomAccessIterator first, 
                             RandomAccessIterator last, Compare comp) {
-  if (last - first > __stl_threshold) {
+  if (last - first > __stl_threshold) {     
     __insertion_sort(first, first + __stl_threshold, comp);
     __unguarded_insertion_sort(first + __stl_threshold, last, comp);
   }
@@ -1050,6 +1057,7 @@ void __final_insertion_sort(RandomAccessIterator first,
     __insertion_sort(first, last, comp);
 }
 
+// 找出2^k <= n 的最大值，例如：n=7，k=2    n=20，k=4    n=8，k=3
 template <class Size>
 inline Size __lg(Size n) {
   Size k;
@@ -1061,17 +1069,24 @@ template <class RandomAccessIterator, class T, class Size>
 void __introsort_loop(RandomAccessIterator first,
                       RandomAccessIterator last, T*,
                       Size depth_limit) {
-  while (last - first > __stl_threshold) {
-    if (depth_limit == 0) {
-      partial_sort(first, last, last);
+  // 以下，__stl_threshold是个全局函数，稍早定义为const int 16
+  while (last - first > __stl_threshold) {      // > 16
+    if (depth_limit == 0) {                     // 至此，分割恶化
+      partial_sort(first, last, last);          // 改用heapsort
       return;
     }
     --depth_limit;
+    // 以下是median-of-3 partition，选择一个够好的枢轴并决定分割点，
+    // 分割点将落在迭代器cut身上
     RandomAccessIterator cut = __unguarded_partition
       (first, last, T(__median(*first, *(first + (last - first)/2),
                                *(last - 1))));
+    // 对右半段递归进行sort
     __introsort_loop(cut, last, value_type(first), depth_limit);
     last = cut;
+    // 现在回到while循环，准备对左半段递归进行sort
+    // 这种写法可读性较差，效率并没有比较好
+    // 一般直观的对左右两半段进行递归，较易阅读
   }
 }
 
@@ -1093,10 +1108,13 @@ void __introsort_loop(RandomAccessIterator first,
   }
 }
 
+// 千万注意：sort()只适用于RandomAccessIterator
 template <class RandomAccessIterator>
 inline void sort(RandomAccessIterator first, RandomAccessIterator last) {
   if (first != last) {
+    // __lg()用来分割恶化的情况：
     __introsort_loop(first, last, value_type(first), __lg(last - first) * 2);
+    // 执行完后，上半段是局部有序的，再进行最终的插入排序
     __final_insertion_sort(first, last);
   }
 }
@@ -1311,6 +1329,7 @@ template <class RandomAccessIterator, class T>
 void __partial_sort(RandomAccessIterator first, RandomAccessIterator middle,
                     RandomAccessIterator last, T*) {
   make_heap(first, middle);
+  // 注意，以下的i<last判断操作，只适用于random iterator
   for (RandomAccessIterator i = middle; i < last; ++i)
     if (*i < *first) 
       __pop_heap(first, middle, i, T(*i), distance_type(first));
@@ -1413,14 +1432,16 @@ partial_sort_copy(InputIterator first, InputIterator last,
 template <class RandomAccessIterator, class T>
 void __nth_element(RandomAccessIterator first, RandomAccessIterator nth,
                    RandomAccessIterator last, T*) {
-  while (last - first > 3) {
+  while (last - first > 3) {          // 长度超过3
+    // 采用median-of-3 partitioning，参数：（first，last，pivot）
+    // 返回一个迭代器，指向分割后的右段第一个元素
     RandomAccessIterator cut = __unguarded_partition
       (first, last, T(__median(*first, *(first + (last - first)/2),
                                *(last - 1))));
-    if (cut <= nth)
-      first = cut;
-    else 
-      last = cut;
+    if (cut <= nth)       // 如果右段起点 <= 指定位置（nth落于右段）
+      first = cut;        // 再对右段实施分割（partitioning）
+    else                  // 否则（nth落于左段）
+      last = cut;         // 对左段实施分割（partitioning）
   }
   __insertion_sort(first, last);
 }
@@ -1457,21 +1478,21 @@ ForwardIterator __lower_bound(ForwardIterator first, ForwardIterator last,
                               const T& value, Distance*,
                               forward_iterator_tag) {
   Distance len = 0;
-  distance(first, last, len);
+  distance(first, last, len);     // 求取整个区间的长度
   Distance half;
   ForwardIterator middle;
 
   while (len > 0) {
-    half = len >> 1;
-    middle = first;
-    advance(middle, half);
-    if (*middle < value) {
-      first = middle;
-      ++first;
-      len = len - half - 1;
+    half = len >> 1;              // 除以2
+    middle = first;               
+    advance(middle, half);        // 这两行令middle指向中间位置
+    if (*middle < value) {        // 如果中间位置的元素值 < 标的值
+      first = middle;             // 这两行令first指向middle的下一位置
+      ++first;    
+      len = len - half - 1;       // 修正len，回头测试循环的结束条件
     }
     else
-      len = half;
+      len = half;                 // 修正len，回头测试循环的结束条件
   }
   return first;
 }
@@ -1486,9 +1507,9 @@ RandomAccessIterator __lower_bound(RandomAccessIterator first,
 
   while (len > 0) {
     half = len >> 1;
-    middle = first + half;
+    middle = first + half;          //令middle指向中间的位置，（这是区别与上一个函数的地方）
     if (*middle < value) {
-      first = middle + 1;
+      first = middle + 1;           //只有RandomAccessIterator才有直接+n的操作
       len = len - half - 1;
     }
     else
@@ -1539,7 +1560,7 @@ RandomAccessIterator __lower_bound(RandomAccessIterator first,
 
   while (len > 0) {
     half = len >> 1;
-    middle = first + half;
+    middle = first + half;          
     if (comp(*middle, value)) {
       first = middle + 1;
       len = len - half - 1;
@@ -1562,20 +1583,20 @@ ForwardIterator __upper_bound(ForwardIterator first, ForwardIterator last,
                               const T& value, Distance*,
                               forward_iterator_tag) {
   Distance len = 0;
-  distance(first, last, len);
+  distance(first, last, len);   // 求取整个区间的长度
   Distance half;
   ForwardIterator middle;
 
   while (len > 0) {
-    half = len >> 1;
+    half = len >> 1;            // 除以2
     middle = first;
-    advance(middle, half);
-    if (value < *middle)
-      len = half;
-    else {
-      first = middle;
+    advance(middle, half);      // 这两行令middle指向中间位置
+    if (value < *middle)        // 如果中间位置的元素值 > 标的值
+      len = half;               // 修正len，回头测试循环的结束条件
+    else {                      
+      first = middle;           // 这两行令first指向middle的下一个位置
       ++first;
-      len = len - half - 1;
+      len = len - half - 1;     // 修正len，回头测试循环的结束条件
     }
   }
   return first;
@@ -1591,11 +1612,11 @@ RandomAccessIterator __upper_bound(RandomAccessIterator first,
 
   while (len > 0) {
     half = len >> 1;
-    middle = first + half;
+    middle = first + half;      //令middle指向中间的位置，（这是区别与上一个函数的地方）
     if (value < *middle)
       len = half;
     else {
-      first = middle + 1;
+      first = middle + 1;       //只有RandomAccessIterator才有直接+n的操作
       len = len - half - 1;
     }
   }
@@ -1662,6 +1683,7 @@ inline ForwardIterator upper_bound(ForwardIterator first, ForwardIterator last,
                        iterator_category(first));
 }
 
+// __equal_range的ForwardIterator版本
 template <class ForwardIterator, class T, class Distance>
 pair<ForwardIterator, ForwardIterator>
 __equal_range(ForwardIterator first, ForwardIterator last, const T& value,
@@ -1673,11 +1695,11 @@ __equal_range(ForwardIterator first, ForwardIterator last, const T& value,
 
   while (len > 0) {
     half = len >> 1;
-    middle = first;
-    advance(middle, half);
+    middle = first;                  // 此行及下一行，相当于RandomAccessIterator的
+    advance(middle, half);           // middle = first + half
     if (*middle < value) {
-      first = middle;
-      ++first;
+      first = middle;               // 此行及下一行，相当于RandomAccessIterator的
+      ++first;                      // first = middle + 1
       len = len - half - 1;
     }
     else if (value < *middle)
@@ -1692,6 +1714,7 @@ __equal_range(ForwardIterator first, ForwardIterator last, const T& value,
   return pair<ForwardIterator, ForwardIterator>(first, first);
 }
 
+// __equal_range的RandomAccessIterator版本
 template <class RandomAccessIterator, class T, class Distance>
 pair<RandomAccessIterator, RandomAccessIterator>
 __equal_range(RandomAccessIterator first, RandomAccessIterator last,
@@ -1700,28 +1723,30 @@ __equal_range(RandomAccessIterator first, RandomAccessIterator last,
   Distance half;
   RandomAccessIterator middle, left, right;
 
-  while (len > 0) {
-    half = len >> 1;
-    middle = first + half;
-    if (*middle < value) {
-      first = middle + 1;
-      len = len - half - 1;
+  while (len > 0) {                 // 整个区间尚未遍历完毕
+    half = len >> 1;                // 找出中央位置
+    middle = first + half;          // 设定中央迭代器      
+    if (*middle < value) {          // 中央元素 < 指定值
+      first = middle + 1;             // 将运作区间缩小（移至后半段），以提高效率
+      len = len - half - 1;         
     }
-    else if (value < *middle)
-      len = half;
-    else {
-      left = lower_bound(first, middle, value);
-      right = upper_bound(++middle, first + len, value);
+    else if (value < *middle)       // 中央元素 > 指定值
+      len = half;                     // 将运作区间缩小（移至前半段），以提高效率
+    else {                          // 中央元素 == 指定值
+      left = lower_bound(first, middle, value);                // 在前半段找lower_bound
+      right = upper_bound(++middle, first + len, value);       // 在后半段找upper_bound  
       return pair<RandomAccessIterator, RandomAccessIterator>(left,
                                                               right);
     }
   }
+  // 整个区间都没有匹配的值，那么应该返回一对迭代器，指向第一个大于value的元素
   return pair<RandomAccessIterator, RandomAccessIterator>(first, first);
 }
 
 template <class ForwardIterator, class T>
 inline pair<ForwardIterator, ForwardIterator>
 equal_range(ForwardIterator first, ForwardIterator last, const T& value) {
+  // 根据迭代器的类型（category），采用不同策略
   return __equal_range(first, last, value, distance_type(first),
                        iterator_category(first));
 }
@@ -1995,26 +2020,28 @@ void __merge_adaptive(BidirectionalIterator first,
                       BidirectionalIterator last, Distance len1, Distance len2,
                       Pointer buffer, Distance buffer_size) {
   if (len1 <= len2 && len1 <= buffer_size) {
+    // case1.缓冲区足够安置序列一
     Pointer end_buffer = copy(first, middle, buffer);
     merge(buffer, end_buffer, middle, last, first);
   }
   else if (len2 <= buffer_size) {
+    // case2.缓冲区足够安置序列二
     Pointer end_buffer = copy(middle, last, buffer);
     __merge_backward(first, middle, buffer, end_buffer, last);
   }
-  else {
+  else {      // case3.缓冲区不足安置任何一个序列
     BidirectionalIterator first_cut = first;
     BidirectionalIterator second_cut = middle;
     Distance len11 = 0;
     Distance len22 = 0;
-    if (len1 > len2) {
+    if (len1 > len2) {            // 序列一比较长
       len11 = len1 / 2;
       advance(first_cut, len11);
       second_cut = lower_bound(middle, last, *first_cut);
       distance(middle, second_cut, len22);   
     }
-    else {
-      len22 = len2 / 2;
+    else {                        // 序列二比较长
+      len22 = len2 / 2;           // 计算序列二的一半长度
       advance(second_cut, len22);
       first_cut = upper_bound(first, middle, *second_cut);
       distance(first, first_cut, len11);
@@ -2022,8 +2049,10 @@ void __merge_adaptive(BidirectionalIterator first,
     BidirectionalIterator new_middle =
       __rotate_adaptive(first_cut, middle, second_cut, len1 - len11,
                         len22, buffer, buffer_size);
+    // 针对左半段，递归调用
     __merge_adaptive(first, first_cut, new_middle, len11, len22, buffer,
                      buffer_size);
+    // 针对右半段，递归调用
     __merge_adaptive(new_middle, second_cut, last, len1 - len11,
                      len2 - len22, buffer, buffer_size);
   }
@@ -2075,14 +2104,15 @@ inline void __inplace_merge_aux(BidirectionalIterator first,
                                 BidirectionalIterator middle,
                                 BidirectionalIterator last, T*, Distance*) {
   Distance len1 = 0;
-  distance(first, middle, len1);
+  distance(first, middle, len1);         // len1表示序列一的长度
   Distance len2 = 0;
-  distance(middle, last, len2);
+  distance(middle, last, len2);          // len2表示序列二的长度
 
+  // 注意，本算法会使用额外的内存空间（暂时缓冲区）
   temporary_buffer<BidirectionalIterator, T> buf(first, last);
-  if (buf.begin() == 0)
+  if (buf.begin() == 0)                   // 内存配置失败
     __merge_without_buffer(first, middle, last, len1, len2);
-  else
+  else                              // 在有暂时缓冲区的情况下进行
     __merge_adaptive(first, middle, last, len1, len2,
                      buf.begin(), Distance(buf.size()));
 }
@@ -2110,6 +2140,7 @@ template <class BidirectionalIterator>
 inline void inplace_merge(BidirectionalIterator first,
                           BidirectionalIterator middle,
                           BidirectionalIterator last) {
+  // 只要有任何一个序列为空，就什么都不必做
   if (first == middle || middle == last) return;
   __inplace_merge_aux(first, middle, last, value_type(first),
                       distance_type(first));
