@@ -33,18 +33,22 @@
 
 __STL_BEGIN_NAMESPACE
 
+// 定义一元仿函数的公用模板
 template <class Arg, class Result>
 struct unary_function {
     typedef Arg argument_type;
     typedef Result result_type;
 };
 
+// 定义二元仿函数的公用模板
 template <class Arg1, class Arg2, class Result>
 struct binary_function {
     typedef Arg1 first_argument_type;
     typedef Arg2 second_argument_type;
     typedef Result result_type;
 };      
+
+// 以下六个为算术类（Arithmetic）仿函数
 
 template <class T>
 struct plus : public binary_function<T, T, T> {
@@ -65,6 +69,8 @@ template <class T>
 struct divides : public binary_function<T, T, T> {
     T operator()(const T& x, const T& y) const { return x / y; }
 };
+
+// 证同元素：数值A和该元素，做op运算，得到A自己
 
 template <class T> inline T identity_element(plus<T>) { return T(0); }
 
@@ -162,6 +168,7 @@ inline binary_negate<Predicate> not2(const Predicate& pred) {
   return binary_negate<Predicate>(pred);
 }
 
+// 绑定操作的第一个元素
 template <class Operation> 
 class binder1st
   : public unary_function<typename Operation::second_argument_type,
@@ -185,6 +192,7 @@ inline binder1st<Operation> bind1st(const Operation& op, const T& x) {
   return binder1st<Operation>(op, arg1_type(x));
 }
 
+// 绑定操作的第二个元素
 template <class Operation> 
 class binder2nd
   : public unary_function<typename Operation::first_argument_type,
@@ -282,13 +290,17 @@ ptr_fun(Result (*x)(Arg1, Arg2)) {
   return pointer_to_binary_function<Arg1, Arg2, Result>(x);
 }
 
-// 获取一个函数值的本身
+// 证同函数（identity function），任何数值通过此函数后，不会有任何改变
+// 此式运用于<stl_set.h>,用来指定RB-tree所需的KeyOfValue op
+// 那是因为set元素的键值即实值，所以采用identity
 template <class T>
 struct identity : public unary_function<T, T> {
   const T& operator()(const T& x) const { return x; }
 };
 
-// 获取pair的第一个元素的仿函数
+// 选择函数（selection function）：接受一个pair，传回其第一元素
+// 此式运用于<stl_map.h>，用来指定RB-tree所需的KeyOfValue op
+// 由于map系以pair元素的第一个元素为其键值，所以采用select1st
 template <class Pair>
 struct select1st : public unary_function<Pair, typename Pair::first_type> {
   const typename Pair::first_type& operator()(const Pair& x) const
@@ -297,7 +309,8 @@ struct select1st : public unary_function<Pair, typename Pair::first_type> {
   }
 };
 
-// 获取pair的第二个元素的仿函数
+// 选择函数：接受一个pair，传回其第二元素
+// SGI STL并未运用此式
 template <class Pair>
 struct select2nd : public unary_function<Pair, typename Pair::second_type> {
   const typename Pair::second_type& operator()(const Pair& x) const
@@ -306,11 +319,15 @@ struct select2nd : public unary_function<Pair, typename Pair::second_type> {
   }
 };
 
+// 投射函数：传回第一参数，忽略第二参数
+// SGI STL并未运用此式
 template <class Arg1, class Arg2>
 struct project1st : public binary_function<Arg1, Arg2, Arg1> {
   Arg1 operator()(const Arg1& x, const Arg2&) const { return x; }
 };
 
+// 投射函数：传回第二参数，忽略第一参数
+// SGI STL并未运用此式
 template <class Arg1, class Arg2>
 struct project2nd : public binary_function<Arg1, Arg2, Arg2> {
   Arg2 operator()(const Arg1&, const Arg2& y) const { return y; }
