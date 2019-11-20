@@ -325,20 +325,24 @@ inline void advance(InputIterator& i, Distance n) {
 template <class Container>
 class back_insert_iterator {
 protected:
-  Container* container;
+  Container* container;         // 底层容器
 public:
-  typedef output_iterator_tag iterator_category;
+  typedef output_iterator_tag iterator_category;      // 注意类型
   typedef void                value_type;
   typedef void                difference_type;
   typedef void                pointer;
   typedef void                reference;
 
+  // 下面这个ctor使back_insert_iterator与容器绑定起来
   explicit back_insert_iterator(Container& x) : container(&x) {}
   back_insert_iterator<Container>&
   operator=(const typename Container::value_type& value) { 
-    container->push_back(value);
+    container->push_back(value);      // 这里是关键，转而调用push_back()
     return *this;
   }
+  
+  // 以下三个操作符对back_insert_iterator不起作用（关闭功能）
+  // 三个操作符返回的都是back_insert_iterator自己
   back_insert_iterator<Container>& operator*() { return *this; }
   back_insert_iterator<Container>& operator++() { return *this; }
   back_insert_iterator<Container>& operator++(int) { return *this; }
@@ -355,17 +359,21 @@ iterator_category(const back_insert_iterator<Container>&)
 
 #endif /* __STL_CLASS_PARTIAL_SPECIALIZATION */
 
+// 这是一个辅助函数，帮助我们方便使用back_insert_iterator
 template <class Container>
 inline back_insert_iterator<Container> back_inserter(Container& x) {
   return back_insert_iterator<Container>(x);
 }
 
+// 这是一个迭代器配接器（iterator adapter），用来将某个迭代器的赋值（assign）
+// 操作修改为插入（insert）操作---从容器的头端插入进去（所以称为front_insert）
+// 注意，该迭代器不适用于vector，因为vector没有提供push_front函数
 template <class Container>
 class front_insert_iterator {
 protected:
-  Container* container;
+  Container* container;       // 底层容器
 public:
-  typedef output_iterator_tag iterator_category;
+  typedef output_iterator_tag iterator_category;      // 注意类型
   typedef void                value_type;
   typedef void                difference_type;
   typedef void                pointer;
@@ -374,9 +382,11 @@ public:
   explicit front_insert_iterator(Container& x) : container(&x) {}
   front_insert_iterator<Container>&
   operator=(const typename Container::value_type& value) { 
-    container->push_front(value);
+    container->push_front(value);               // 这里是关键，转而调用push_front()
     return *this;
   }
+  // 以下三个操作符对front_insert_iterator不起作用（关闭功能）
+  // 三个操作符返回的都是front_insert_iterator自己
   front_insert_iterator<Container>& operator*() { return *this; }
   front_insert_iterator<Container>& operator++() { return *this; }
   front_insert_iterator<Container>& operator++(int) { return *this; }
@@ -393,18 +403,22 @@ iterator_category(const front_insert_iterator<Container>&)
 
 #endif /* __STL_CLASS_PARTIAL_SPECIALIZATION */
 
+// 这是一个辅助函数，帮助我们方便使用front_insert_iterator
 template <class Container>
 inline front_insert_iterator<Container> front_inserter(Container& x) {
   return front_insert_iterator<Container>(x);
 }
 
+// 这是一个迭代器配接器（iterator），用来将某个迭代器的赋值（assign）
+// 操作修改为插入（insert）操作，在指定的位置上进行，并将迭代器右移一个位置
+// ----如此便可方便地连续执行“表面上是赋值（覆写）而实际上是插入”的操作
 template <class Container>
 class insert_iterator {
 protected:
-  Container* container;
+  Container* container;                     // 底层容器
   typename Container::iterator iter;
 public:
-  typedef output_iterator_tag iterator_category;
+  typedef output_iterator_tag iterator_category;              // 注意类型
   typedef void                value_type;
   typedef void                difference_type;
   typedef void                pointer;
@@ -414,16 +428,19 @@ public:
     : container(&x), iter(i) {}
   insert_iterator<Container>&
   operator=(const typename Container::value_type& value) { 
-    iter = container->insert(iter, value);
-    ++iter;
+    iter = container->insert(iter, value);                    // 这里是关键，转调用insert()
+    ++iter;           // 注意这个，使insert iterator永远随其目标贴身移动
     return *this;
   }
+  // 以下三个操作符对 insert_iterator不起作用（关闭功能）
+  // 三个操作符返回的都是 insert_iterator 自己
   insert_iterator<Container>& operator*() { return *this; }
   insert_iterator<Container>& operator++() { return *this; }
   insert_iterator<Container>& operator++(int) { return *this; }
 };
 
 #ifndef __STL_CLASS_PARTIAL_SPECIALIZATION
+
 
 template <class Container>
 inline output_iterator_tag
@@ -434,6 +451,7 @@ iterator_category(const insert_iterator<Container>&)
 
 #endif /* __STL_CLASS_PARTIAL_SPECIALIZATION */
 
+// 这是一个辅助函数，帮助我们方便使用 insert_iterator
 template <class Container, class Iterator>
 inline insert_iterator<Container> inserter(Container& x, Iterator i) {
   typedef typename Container::iterator iter;
@@ -537,12 +555,15 @@ inline bool operator==(
 //  reverse_bidirectional_iterator is no longer part of the draft
 //  standard, but it is retained for backward compatibility.
 
+// 这是一个迭代器配接器（iterator adapter），用来将某个迭代器逆反前进方向
+// 使前进为后退，后退为前进
 template <class Iterator>
 class reverse_iterator 
 {
 protected:
-  Iterator current;
+  Iterator current;           // 记录对应之正向迭代器
 public:
+  // 逆向迭代器的5种相应型别（associated types）都和其对应的正向迭代器相同
   typedef typename iterator_traits<Iterator>::iterator_category
           iterator_category;
   typedef typename iterator_traits<Iterator>::value_type
@@ -554,11 +575,12 @@ public:
   typedef typename iterator_traits<Iterator>::reference
           reference;
 
-  typedef Iterator iterator_type;
-  typedef reverse_iterator<Iterator> self;
+  typedef Iterator iterator_type;             // 代表正向迭代器
+  typedef reverse_iterator<Iterator> self;    // 代表逆向迭代器
 
 public:
   reverse_iterator() {}
+  // 下面这个ctor将reverse_iterator与某个迭代器x系结起来
   explicit reverse_iterator(iterator_type x) : current(x) {}
 
   reverse_iterator(const self& x) : current(x.current) {}
@@ -567,33 +589,40 @@ public:
   reverse_iterator(const reverse_iterator<Iter>& x) : current(x.current) {}
 #endif /* __STL_MEMBER_TEMPLATES */
     
-  iterator_type base() const { return current; }
+  iterator_type base() const { return current; }    // 取出对应的正向迭代器
   reference operator*() const {
     Iterator tmp = current;
     return *--tmp;
+    // 以上为关键所在，对逆向迭代器取值，就是将“对应之正向迭代器”后退一格而后取值
   }
 #ifndef __SGI_STL_NO_ARROW_OPERATOR
   pointer operator->() const { return &(operator*()); }
 #endif /* __SGI_STL_NO_ARROW_OPERATOR */
 
+  // 前进（++）变成后退（--）
   self& operator++() {
     --current;
     return *this;
   }
+  // 前进（++）变成后退（--）
   self operator++(int) {
     self tmp = *this;
     --current;
     return tmp;
   }
+  // 后退（--）变成前进（++）
   self& operator--() {
     ++current;
     return *this;
   }
+  // 后退（--）变成前进（++）
   self operator--(int) {
     self tmp = *this;
     ++current;
     return tmp;
   }
+
+  // 前进与后退方向完全逆转
 
   self operator+(difference_type n) const {
     return self(current - n);
@@ -609,6 +638,10 @@ public:
     current += n;
     return *this;
   }
+
+  // 注意，下面第一个*和唯一一个+都会调用本类的operator*和operator+，
+  // 第二个*则不会。（判断法则：完全看处理的型别是什么而定）
+  // *this找到迭代器，+n反向移动n个位置，*(),取出位置的前向值
   reference operator[](difference_type n) const { return *(*this + n); }  
 }; 
  
@@ -756,6 +789,9 @@ operator+(Dist n, const reverse_iterator<RandomAccessIter, T, Ref, Dist>& x) {
 
 #endif /* __STL_CLASS_PARTIAL_SPECIALIZATION */
 
+// 这是一个input iterator，能够为“来自某一basic_istream”的对象执行
+// 格式化输入操作。注意，此版本为旧有之HP规格，未符合标准接口：
+// istream_iterator<T, charT, traits, Distance>
 template <class T, class Distance = ptrdiff_t> 
 class istream_iterator {
   friend bool
@@ -767,7 +803,9 @@ protected:
   bool end_marker;
   void read() {
     end_marker = (*stream) ? true : false;
-    if (end_marker) *stream >> value;
+    if (end_marker) *stream >> value;       // 关键
+    // 以上，输入之后，stream的状态可能改变，所以下面再判断一次以决定end_marker
+    // 当读到eof或读到型别不符的资料，stream即处于false状态 
     end_marker = (*stream) ? true : false;
   }
 public:
@@ -776,6 +814,7 @@ public:
   typedef Distance           difference_type;
   typedef const T*           pointer;
   typedef const T&           reference;
+  // 以上，因身为input iterator，所以采用 const 比较保险
 
   istream_iterator() : stream(&cin), end_marker(false) {}
   istream_iterator(istream& s) : stream(&s) { read(); }
@@ -783,6 +822,8 @@ public:
 #ifndef __SGI_STL_NO_ARROW_OPERATOR
   pointer operator->() const { return &(operator*()); }
 #endif /* __SGI_STL_NO_ARROW_OPERATOR */
+
+  // 迭代器前进一个位置，就代表要读取一笔资料
   istream_iterator<T, Distance>& operator++() { 
     read(); 
     return *this;
@@ -819,11 +860,15 @@ inline bool operator==(const istream_iterator<T, Distance>& x,
          x.end_marker == false && y.end_marker == false;
 }
 
+// 这是一个output iterator，能够为“来自某一basic_istream”的对象执行
+// 格式化输入操作。注意，此版本为旧有之HP规格，未符合标准接口：
+// ostream_iterator<T, charT, traits>
 template <class T>
 class ostream_iterator {
 protected:
   ostream* stream;
-  const char* string;
+  const char* string;       // 每次输出后的间隔符号
+                            // 变量名称为string可以嘛？可以！
 public:
   typedef output_iterator_tag iterator_category;
   typedef void                value_type;
@@ -833,11 +878,15 @@ public:
 
   ostream_iterator(ostream& s) : stream(&s), string(0) {}
   ostream_iterator(ostream& s, const char* c) : stream(&s), string(c)  {}
+  
+  // 对迭代器赋值（assign）操作，就代表要输出一笔资料
   ostream_iterator<T>& operator=(const T& value) { 
-    *stream << value;
-    if (string) *stream << string;
+    *stream << value;                     // 关键：输出数值
+    if (string) *stream << string;        // 如果输出状态无误，输出间隔符号
     return *this;
   }
+
+  // 注意以下三个操作
   ostream_iterator<T>& operator*() { return *this; }
   ostream_iterator<T>& operator++() { return *this; } 
   ostream_iterator<T>& operator++(int) { return *this; } 
